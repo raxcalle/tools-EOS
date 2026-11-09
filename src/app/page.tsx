@@ -1,69 +1,104 @@
-import Image from "next/image";
+'use client'
+import { useState, useRef } from 'react'
+import Header from '@/components/Header'
+import ApiKeyInput from '@/components/ApiKeyInput'
+import IdeaForm from '@/components/IdeaForm'
+import ResultPanel from '@/components/ResultPanel'
+import HistoryPanel from '@/components/HistoryPanel'
+import CompanyIntelTool from '@/components/CompanyIntel'
+import PromptGen from '@/components/PromptGen'
+import DailyPlan from '@/components/DailyPlan'
+import ContentReview from '@/components/ContentReview'
+import { useTheme } from '@/hooks/useTheme'
+import { useHistory } from '@/hooks/useHistory'
+import type { AnalysisResult, AnalyzeOptions, HistoryItem } from '@/lib/types'
+
+type Tab = 'idea' | 'company' | 'promptgen' | 'dailyplan' | 'contentreview'
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'idea',          label: 'Idea Analyzer'   },
+  { key: 'company',       label: 'Company Intel'   },
+  { key: 'promptgen',     label: 'Prompt Gen'      },
+  { key: 'dailyplan',     label: 'Daily Plan'      },
+  { key: 'contentreview', label: 'Content Review'  },
+]
 
 export default function Home() {
+  const { theme, toggle } = useTheme()
+  const { history, save, clear } = useHistory()
+  const [tab, setTab] = useState<Tab>('idea')
+
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState<string | null>(null)
+  const [result, setResult]           = useState<AnalysisResult | null>(null)
+  const [currentIdea, setCurrentIdea] = useState('')
+  const resultRef = useRef<HTMLDivElement>(null)
+
+  const handleAnalyze = async (idea: string, options: AnalyzeOptions) => {
+    setError(null); setResult(null); setLoading(true); setCurrentIdea(idea)
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea, options }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
+      setResult(data.result)
+      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error.')
+    } finally { setLoading(false) }
+  }
+
+  const handleLoadHistory = (item: HistoryItem) => {
+    setTab('idea'); setCurrentIdea(item.idea); setResult(item.parsed)
+    setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="app">
+      <Header theme={theme} onToggle={toggle} />
+
+      {/* Tabs */}
+      <div className="tabs">
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            className={`tab-btn ${tab === t.key ? 'active' : ''}`}
+            onClick={() => setTab(t.key)}
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Idea Analyzer */}
+      {tab === 'idea' && (
+        <>
+          <IdeaForm onSubmit={handleAnalyze} loading={loading} />
+          {loading && (
+            <div className="loading-box">
+              <div className="loading-ring" />
+              <div className="loading-text"><strong>Analyzing</strong> — AI is evaluating your idea...</div>
+            </div>
+          )}
+          {error && <div className="error-box">{error}</div>}
+          {result && (
+            <div ref={resultRef}>
+              <ResultPanel result={result} idea={currentIdea}
+                onReset={() => { setResult(null); setError(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                onSave={save}
+              />
+            </div>
+          )}
+          <HistoryPanel history={history} onLoad={handleLoadHistory} onClear={clear} />
+        </>
+      )}
+
+      {tab === 'company'       && <CompanyIntelTool />}
+      {tab === 'promptgen'     && <PromptGen />}
+      {tab === 'dailyplan'     && <DailyPlan />}
+      {tab === 'contentreview' && <ContentReview />}
     </div>
-  );
+  )
 }
