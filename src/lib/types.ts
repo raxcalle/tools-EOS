@@ -71,6 +71,9 @@ export interface DecisionMaker {
   kepribadian: string
   fokus_utama: string
   cara_approach: string
+  kontak_linkedin: string
+  kontak_email: string
+  confidence: 'Verified' | 'Estimasi' | 'Tidak Diketahui'
 }
 
 export interface CompanyIntel {
@@ -79,9 +82,13 @@ export interface CompanyIntel {
   deskripsi_singkat: string
   founded: string
   ukuran: string
+  website: string
+  is_known_company: boolean
+  disclaimer: string
   decision_makers: DecisionMaker[]
   pain_points: string[]
   tips_presentasi: string[]
   opening_statement: string
   sumber: string[]
+  linkedin_search_url: string
 }
